@@ -37,6 +37,7 @@ const build_options = [
 ];
 var uri_board = getParam('board');
 var monitor = {};
+let currentMachineProfile = null; // To store the base profile of the selected machine
 
 var setting_defaults = Array();
 
@@ -74,6 +75,20 @@ btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
 main.appendChild(btn);
+
+var variants = addDropdown(main, 'variants', 'Variant: ');
+addDropdownOption(variants, '--- select variant ---');
+var btn = document.createElement('button');
+btn.id = 'variant_url';
+btn.disabled = true;
+btn.innerText = 'Homepage';
+btn.style.marginLeft = '5px';
+btn.addEventListener('click', function() {
+    window.open(this.URL, '_blank')
+});
+main.appendChild(btn);
+variants.parentElement.style.display = 'none';
+
 
 var drivers = addDropdown(main, 'drivers', 'Driver: ');
 addDropdownOption(drivers, '--- select driver ---');
@@ -1224,27 +1239,74 @@ function applyWebBuilderOverrides(profile) {
     }, 100); // 100ms delay is safer to ensure all UI is ready
 }
 
-// MODIFY the machineSelected function
-async function machineSelected (machine)
-{
-	urlbtnSet('machine_url', machine.URL);
+function variantSelected(variantData) {
+    if (!currentMachineProfile) return;
 
-    // If a default or invalid machine is selected, reset the driver/board state
-    if (!machine || machine.id === GRBLHAL_DEFAULT_ID) {
-        drivers.selectedIndex = 0;
-        drivers.dispatchEvent(new Event('change')); // This will clear the UI
+    if (!variantData) {
+        // Re-apply the base machine profile if "---" is selected
+        applyWebBuilderOverrides(currentMachineProfile);
+        urlbtnSet('variant_url', '');
         return;
     }
 
-    // If the selected machine doesn't have a profile URL, we can't proceed
+    urlbtnSet('variant_url', variantData.URL);
+
+    // Deep copy the base profile to avoid modifying it
+    let mergedProfile = JSON.parse(JSON.stringify(currentMachineProfile));
+
+    // Merge webbuilder_overrides
+    if (variantData.webbuilder_overrides) {
+        Object.assign(mergedProfile.webbuilder_overrides, variantData.webbuilder_overrides);
+    }
+
+    // Merge setting_defaults, handling potential duplicates
+    if (variantData.setting_defaults) {
+        const settingsMap = new Map();
+        // Add base settings to the map
+        mergedProfile.setting_defaults.forEach(setting => {
+            const [key] = setting.split('=');
+            settingsMap.set(key, setting);
+        });
+        // Add/overwrite with variant settings
+        variantData.setting_defaults.forEach(setting => {
+            const [key] = setting.split('=');
+            settingsMap.set(key, setting);
+        });
+        // Convert map back to array
+        mergedProfile.setting_defaults = Array.from(settingsMap.values());
+    }
+
+    // Apply the newly merged profile
+    applyWebBuilderOverrides(mergedProfile);
+}
+
+
+async function machineSelected (machine)
+{
+    urlbtnSet('machine_url', machine.URL);
+    const variantsDropdown = document.getElementById('variants');
+    // Reset and hide variants dropdown
+    while (variantsDropdown.options.length > 1) {
+        variantsDropdown.remove(1);
+    }
+    variantsDropdown.parentElement.style.display = 'none';
+    urlbtnSet('variant_url', '');
+
+    if (!machine || machine.id === GRBLHAL_DEFAULT_ID) {
+        drivers.selectedIndex = 0;
+        drivers.dispatchEvent(new Event('change'));
+        currentMachineProfile = null;
+        return;
+    }
+
     if (!machine.profileURL) {
         console.error("Machine is missing the 'profileURL' property.");
+        currentMachineProfile = null;
         return;
     }
 
     let profileData = null;
     try {
-        // Construct the correct URL for the raw machine profile
         const profileUrl = machine.profileURL.match('github.com')
             ? machine.profileURL.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/')
             : machine.profileURL;
@@ -1252,14 +1314,15 @@ async function machineSelected (machine)
         const profileResponse = await fetch(profileUrl + '?t=' + Math.round(new Date().getTime() / 1000));
         if (!profileResponse.ok) throw new Error(`Failed to fetch profile: ${profileResponse.statusText}`);
         profileData = await profileResponse.json();
+        currentMachineProfile = profileData;
 
     } catch (error) {
         console.error("Could not load machine profile JSON:", error);
         alert("Failed to load the selected machine profile. Please check the URL and file content.");
-        return; // Stop execution if the profile can't be loaded
+        currentMachineProfile = null;
+        return;
     }
 
-    // Extract driver and board info from the loaded profile
     const driverName = profileData.driver ? profileData.driver.name : null;
     const boardSymbol = profileData.driver ? profileData.driver.board : null;
 
@@ -1268,7 +1331,6 @@ async function machineSelected (machine)
         return;
     }
 
-    // Find and select the driver based on the name from the profile
     let driverFound = false;
     for (let i = 0; i < drivers.options.length; i++) {
         const driverOpt = drivers.options[i];
@@ -1284,7 +1346,6 @@ async function machineSelected (machine)
         return;
     }
 
-    // Now, manually load the selected driver's configuration
     const selectedDriver = drivers.options[drivers.selectedIndex].privateData;
     const driverUrl = selectedDriver.driverURL.match('github.com')
         ? selectedDriver.driverURL.replace('github.com', 'raw.githubusercontent.com') + '/master/driver.json'
@@ -1295,10 +1356,8 @@ async function machineSelected (machine)
         if (response.status !== 200) throw new Error('Failed to fetch driver.json');
         const result = await response.json();
 
-        // Populate UI tabs and the boards dropdown
         driverSelected(selectedDriver, result);
 
-        // Find and select the board based on the symbol from the profile
         let boardFound = false;
         for (let i = 0; i < boards.options.length; i++) {
             const boardOpt = boards.options[i];
@@ -1314,11 +1373,18 @@ async function machineSelected (machine)
             return;
         }
 
-        // Trigger board selection to apply board-specific capabilities
         boards.dispatchEvent(new Event('change'));
 
-        // Finally, apply all the UI overrides from the machine profile
+        // Apply the base profile first.
         applyWebBuilderOverrides(profileData);
+
+        // Then, populate the variants dropdown if they exist.
+        if (profileData.variants && Array.isArray(profileData.variants) && profileData.variants.length > 0) {
+            variantsDropdown.parentElement.style.display = 'block';
+            profileData.variants.forEach(variant => {
+                addDropdownOption(variantsDropdown, variant.name, variant);
+            });
+        }
 
     } catch (error) {
         console.error("Error during driver data loading or UI configuration:", error);
@@ -1771,6 +1837,12 @@ machines.onchange = function()
 {
     machineSelected(machines[this.selectedIndex].privateData);
 }
+
+variants.onchange = function()
+{
+    variantSelected(this.options[this.selectedIndex].privateData);
+}
+
 
 function createSelection ()
 {
@@ -2248,7 +2320,7 @@ function urlbtnSet (id, url)
 {
     const urlbtn = document.getElementById(id);
     urlbtn.URL = url;
-    urlbtn.disabled = url === '';
+    urlbtn.disabled = !url || url === '';
 }
 
 function axisoptEnable (symbol, disabled)
