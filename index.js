@@ -1172,6 +1172,10 @@ function vendorSelected (vendor, result)
         el.privateData = machine;
         machines.appendChild(el);
     }
+
+    const machinesDropdown = document.getElementById('machines');
+    machinesDropdown.disabled = false;
+    document.getElementById('machine_url').disabled = false;
 }
 
 function applyWebBuilderOverrides(profile) {
@@ -1288,6 +1292,7 @@ async function machineSelected (machine)
 {
     urlbtnSet('machine_url', machine.URL);
     const variantsDropdown = document.getElementById('variants');
+    const machinesDropdown = document.getElementById('machines');
     const variantsLabel = variantsDropdown.parentElement;
 
     // Reset and hide variants dropdown
@@ -1306,9 +1311,14 @@ async function machineSelected (machine)
         // Special handling for grblHAL variant
         variantsLabel.style.display = ''; // Make the row visible
         addDropdownOption(variantsDropdown, 'None');
+
         variantsDropdown.selectedIndex = 1; // Select "None"
         variantsDropdown.disabled = true;
         document.getElementById('variant_url').disabled = true;
+
+
+        machinesDropdown.selectedIndex = 1; // Select "None"
+        machinesDropdown.disabled = true;
 
         return;
     }
@@ -1391,6 +1401,10 @@ async function machineSelected (machine)
 
         // Apply the base profile first.
         applyWebBuilderOverrides(profileData);
+
+        machinesDropdown.disabled = false;
+        document.getElementById('machine_url').disabled = false;
+
 
         // Then, populate the variants dropdown if they exist.
         if (profileData.variants && Array.isArray(profileData.variants) && profileData.variants.length > 0) {
@@ -1824,7 +1838,7 @@ vendors.onchange = function()
             machines.removeChild(machines.lastChild);
 
         addDropdownOption(machines, '--- select machine ---');
-        addDropdownOption(machines, 'grblHAL', { id: GRBLHAL_DEFAULT_ID });
+        addDropdownOption(machines, 'None', { id: GRBLHAL_DEFAULT_ID });
         machines.selectedIndex = 1; // Select "grblHAL" machine
         machines.dispatchEvent(new Event('change'));
 
