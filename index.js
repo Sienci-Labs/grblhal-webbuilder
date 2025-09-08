@@ -20,11 +20,10 @@
   along with grblHAL. If not, see <http://www.gnu.org/licenses/>.
 
 */
-// --- MODIFICATION START ---
+
 // Define the base URL for your remote server
 const remote_server_base_url = 'https://svn.io-engineering.com:8443';
 const GRBLHAL_DEFAULT_ID = 'grblhal_default'; // New constant for default option ID
-// --- MODIFICATION END ---
 
 const drivers_url = new URL('drivers/drivers.json', window.location.href).href;
 
@@ -46,8 +45,6 @@ var data = await response2.json();
 const default_caps = data.default_caps;
 const main = document.getElementById('main');
 const container = document.getElementById('container');
-
-// --- MODIFICATION START: Reordered UI elements and added "grblHAL" default options ---
 
 var vendors = addDropdown(main, 'vendors', 'Machine vendor: ');
 addDropdownOption(vendors, '--- select vendor ---');
@@ -119,9 +116,6 @@ btn.addEventListener('click', function() {
 main.appendChild(btn);
 
 addTextField(main, 'notes', 'Notes: ', 480, 67);
-
-// --- MODIFICATION END ---
-
 
 main.appendChild(document.createElement('br'));
 main.appendChild(document.createElement('br'));
@@ -1164,9 +1158,6 @@ function vendorSelected (vendor, result)
     }
 }
 
-// --- MODIFICATION START: The machineSelected function is now async and handles auto-selection ---
-
-// ADD THIS NEW HELPER FUNCTION
 function applyWebBuilderOverrides(profile) {
     if (!profile) return;
 
@@ -1251,7 +1242,6 @@ async function machineSelected (machine)
         return;
     }
 
-    // --- New Logic Start ---
     let profileData = null;
     try {
         // Construct the correct URL for the raw machine profile
@@ -1277,7 +1267,6 @@ async function machineSelected (machine)
         console.error("Machine profile is missing 'driver.name' or 'driver.board' information.");
         return;
     }
-    // --- New Logic End ---
 
     // Find and select the driver based on the name from the profile
     let driverFound = false;
@@ -1336,7 +1325,7 @@ async function machineSelected (machine)
         alert("An error occurred while configuring the builder for the selected machine.");
     }
 }
-// --- MODIFICATION END ---
+
 
 
 function eeprom_size2index (size)
@@ -1700,7 +1689,7 @@ drivers.onchange = function()
 {
     var driver = this.options[this.selectedIndex].privateData;
 
-    if(driver == undefined || driver.id === GRBLHAL_DEFAULT_ID) { // MODIFIED: Check for grblHAL default driver
+    if(driver == undefined || driver.id === GRBLHAL_DEFAULT_ID) {
 
         for(const tab of data.tabs) {
             if(tab.div) {
@@ -2224,10 +2213,9 @@ console.log('----------');
     generateEnable(false);
 
     let xhr = new XMLHttpRequest();
-    // --- MODIFICATION START ---
     // Changed window.location.origin to remote_server_base_url to point the POST request to your server
     xhr.open('POST', remote_server_base_url + '/builder' + build.docker_instance);
-    // --- MODIFICATION END ---
+
     xhr.responseType = 'blob';
     xhr.setRequestHeader('Accept', 'application/octet-stream');
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -2588,7 +2576,6 @@ function lineUp (div)
     }
 }
 
-// --- MODIFICATION START: Initial page load defaults to "grblHAL" vendor/machine ---
 // Find and select "grblHAL" as the default vendor on initial load
 let grblhalVendorIndex = -1;
 for (let i = 0; i < vendors.options.length; i++) {
@@ -2601,4 +2588,3 @@ if (grblhalVendorIndex !== -1) {
     vendors.selectedIndex = grblhalVendorIndex;
     vendors.dispatchEvent(new Event('change')); // Trigger the vendor change event
 }
-// --- MODIFICATION END ---
