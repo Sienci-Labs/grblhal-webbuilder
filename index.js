@@ -1825,8 +1825,8 @@ vendors.onchange = function()
 
         addDropdownOption(machines, '--- select machine ---');
         addDropdownOption(machines, 'grblHAL', { id: GRBLHAL_DEFAULT_ID });
-        machines.selectedIndex = 1; // Select "grblHAL" machine
-        machines.dispatchEvent(new Event('change'));
+        machines.selectedIndex = 0; // Set to "--- select machine ---"
+        machines.dispatchEvent(new Event('change')); // Trigger event to reset the UI
 
         urlbtnSet('vendor_url', '');
         urlbtnSet('machine_url', '');
