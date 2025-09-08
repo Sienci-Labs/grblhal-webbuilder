@@ -1,7 +1,7 @@
 {
   "vendors": [
-    { 
-      "name": "Sienci",
+    {
+      "name": "Sienci Labs",
       "vendorURL": "https://sienci.com",
       "profilesURL": "https://github.com/Sienci-Labs/grblhal-profiles/"
 	}
@@ -194,7 +194,7 @@
             { "name": "400", "symbol": { "name": "ACCELERATION_TICKS_PER_SECOND", "value": 400 }, "symbols": [ { "name": "SEGMENT_BUFFER_SIZE", "value": "40" } ] },
             { "name": "500", "symbol": { "name": "ACCELERATION_TICKS_PER_SECOND", "value": 500 }, "symbols": [ { "name": "SEGMENT_BUFFER_SIZE", "value": "50" } ] }
           ]
-        } 
+        }
       ]
     },
     { "id": "g187", "tab_id": 3, "name": "G187 acceleration profiles", "symbol": { "name": "ENABLE_ACCELERATION_PROFILES", "type": "bool" }, "URL": "https://github.com/grblHAL/core/wiki/Jerk-acceleration" },
@@ -343,7 +343,7 @@
     },
     { "id": "spindle", "name": "Enable selected spindles simultaneously", "symbol": { "name": "N_SYS_SPINDLE", "type": "bool" } },
     { "id": "modbus", "name": "ModBus RTU", "symbol": { "name": "MODBUS_ENABLE", "type": "dropdown" }, "URL": "https://github.com/grblHAL/Plugins_spindle/",
-      "resources": { "serial_ports": 1 }, 
+      "resources": { "serial_ports": 1 },
       "options": [
         { "id": "modbusoff", "name": "Disabled", "symbol": { "name": "MODBUS_BAUDRATE", "value": -1 }, "resources": { "serial_ports": 0 } },
         { "id": "modbus0", "name": "2400 baud", "symbol": { "name": "MODBUS_BAUDRATE", "value": 0 }, "resources": { "serial_ports": 1 } },
@@ -470,13 +470,13 @@
       "resources": { "digital_in": 1 }
     },
     { "id": "file_tooltable", "tab_id": 1, "name": "File based tooltable", "symbol": { "name": "TOOLTABLE_ENABLE", "type": "bool" }, "URL": "https://github.com/grblHAL/Plugins_misc/?tab=readme-ov-file#file-based-tooltable"
-      
+
     },
     { "id": "homing_pulloff", "tab_id": 1, "name": "Homing pulloff per axis", "symbol": { "name": "HOMING_PULLOFF_ENABLE", "type": "bool" }, "URL": "https://github.com/grblHAL/Plugins_misc/?tab=readme-ov-file#homing-pulloff"
-      
+
     },
     { "id": "feed_override", "tab_id": 1, "name": "Feed rate override (M220)", "symbol": { "name": "FEED_OVERRIDE_ENABLE", "type": "bool" }, "URL": "https://github.com/grblHAL/Plugins_misc/?tab=readme-ov-file#feed-override"
-      
+
     },
     { "id": "pwm_servo", "tab_id": 1, "name": "PWM servo (M280)", "symbol": { "name": "PWM_SERVO_ENABLE", "type": "bool" }, "URL": "https://github.com/grblHAL/Plugins_misc/?tab=readme-ov-file#pwm-servo",
       "resources": { "analog_pwm_out": 1 }

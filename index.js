@@ -20,7 +20,13 @@
   along with grblHAL. If not, see <http://www.gnu.org/licenses/>.
 
 */
-const drivers_url = './drivers/drivers.json';
+// --- MODIFICATION START ---
+// Define the base URL for your remote server
+const remote_server_base_url = 'https://svn.io-engineering.com:8443';
+const GRBLHAL_DEFAULT_ID = 'grblhal_default'; // New constant for default option ID
+// --- MODIFICATION END ---
+
+const drivers_url = window.location.origin + '/drivers/drivers.json';
 const is_dev = typeof getParam('dev') !== 'undefined';
 const dropdown_width = 215;
 const uri_driver = getParam('driver');
@@ -40,6 +46,37 @@ const default_caps = data.default_caps;
 const main = document.getElementById('main');
 const container = document.getElementById('container');
 
+// --- MODIFICATION START: Reordered UI elements and added "grblHAL" default options ---
+
+var vendors = addDropdown(main, 'vendors', 'Machine vendor: ');
+addDropdownOption(vendors, '--- select vendor ---');
+addDropdownOption(vendors, 'grblHAL', { id: GRBLHAL_DEFAULT_ID }); // Added grblHAL default option
+for(const vendor of data.vendors) {
+    const el = addDropdownOption(vendors, vendor.name, vendor);
+}
+var btn = document.createElement('button');
+btn.id = 'vendor_url';
+btn.disabled = true;
+btn.innerText = 'Homepage';
+btn.style.marginLeft = '5px';
+btn.addEventListener('click', function() {
+    window.open(this.URL, '_blank')
+})
+main.appendChild(btn);
+
+var machines = addDropdown(main, 'machines', 'Machine: ');
+addDropdownOption(machines, '--- select machine ---');
+addDropdownOption(machines, 'grblHAL', { id: GRBLHAL_DEFAULT_ID }); // Added grblHAL default option initially
+var btn = document.createElement('button');
+btn.id = 'machine_url';
+btn.disabled = true;
+btn.innerText = 'Homepage';
+btn.style.marginLeft = '5px';
+btn.addEventListener('click', function() {
+    window.open(this.URL, '_blank')
+})
+main.appendChild(btn);
+
 var drivers = addDropdown(main, 'drivers', 'Driver: ');
 addDropdownOption(drivers, '--- select driver ---');
 for(const driver of data.drivers) {
@@ -47,7 +84,6 @@ for(const driver of data.drivers) {
     if(uri_driver != 'undefined' && driver.folder == uri_driver)
         drivers.selectedIndex = el.index;
 }
-//addDriverInfoButton(main);
 var btn = document.createElement('button');
 btn.id = 'driver_url';
 btn.disabled = true;
@@ -83,34 +119,8 @@ main.appendChild(btn);
 
 addTextField(main, 'notes', 'Notes: ', 480, 67);
 
-var vendors = addDropdown(main, 'vendors', 'Machine vendor: ');
-addDropdownOption(vendors, '--- select vendor ---');
-for(const vendor of data.vendors) {
-    const el = addDropdownOption(vendors, vendor.name, vendor);
-//    if(uri_driver != 'undefined' && driver.folder == uri_driver)
-//        vendors.selectedIndex = el.index;
-}
-var btn = document.createElement('button');
-btn.id = 'vendor_url';
-btn.disabled = true;
-btn.innerText = 'Homepage';
-btn.style.marginLeft = '5px';
-btn.addEventListener('click', function() {
-    window.open(this.URL, '_blank')
-})
-main.appendChild(btn);
+// --- MODIFICATION END ---
 
-var machines = addDropdown(main, 'machines', 'Machine: ');
-addDropdownOption(machines, '--- select machine ---');
-var btn = document.createElement('button');
-btn.id = 'machine_url';
-btn.disabled = true;
-btn.innerText = 'Homepage';
-btn.style.marginLeft = '5px';
-btn.addEventListener('click', function() {
-    window.open(this.URL, '_blank')
-})
-main.appendChild(btn);
 
 main.appendChild(document.createElement('br'));
 main.appendChild(document.createElement('br'));
@@ -458,12 +468,12 @@ function addDropdownOption (obj, name, privateData = undefined)
 function get_idx_bn (dropdown, name)
 {
     var i;
-    
+
     for(i = 0; i < dropdown.options.length; i++) {
         if(dropdown.options[i].value == name)
             return i;
     }
-    
+
     return -1;
 }
 
@@ -475,7 +485,7 @@ function isModbusSpindle (spindle)
 function dropdownChanged (dropdown)
 {
 	console.log(dropdown);
-	
+
     var boards = document.getElementById('boards');
     var board = boards[boards.selectedIndex].privateData;
     const el = dropdown[dropdown.selectedIndex];
@@ -491,7 +501,7 @@ function dropdownChanged (dropdown)
 				var skip = false;
 
                 if(!dropdown.valuePrevious)
-                    dropdown.valuePrevious = {};				
+                    dropdown.valuePrevious = {};
                 if(!dropdown.valuePrevious.hasOwnProperty(resource))
                     dropdown.valuePrevious[resource] = 0;
 
@@ -500,7 +510,7 @@ function dropdownChanged (dropdown)
 					const sp = document.getElementById(dropdown.id == 'KEYPAD_ENABLE' ? 'MPG_ENABLE' : 'KEYPAD_ENABLE');
 					if(sp.valuePrevious) {
 						if(sp.valuePrevious[resource] == 1)
-							skip = true;							
+							skip = true;
 						else if(dropdown.valuePrevious[resource] == 1 && resources[resource] == 0) {
 							dropdown.valuePrevious[resource] = 0;
 							if((sp.valuePrevious[resource] = sp[sp.selectedIndex].privateData2.resources[resource]) == 0) {
@@ -518,29 +528,13 @@ function dropdownChanged (dropdown)
 					if(claim)
 						monitor[resource].used += resources[resource] - dropdown.valuePrevious[resource];
 					else
-						monitor[resource].used -= dropdown.valuePrevious[resource];       
+						monitor[resource].used -= dropdown.valuePrevious[resource];
 					if(monitor[resource].used < 0)
 						monitor[resource].used = 0;
 					dropdown.valuePrevious[resource] = claim || dropdown.valuePrevious[resource] == 0 ? resources[resource] : 0;
 				}
             }
         });
-/*        
-        for(var resource in monitor) {
-            if(typeof resources[resource] != 'undefined') {
-                if(!dropdown.valuePrevious)
-                    dropdown.valuePrevious = {};
-                if(typeof dropdown.valuePrevious[resource] == 'undefined')
-                    dropdown.valuePrevious[resource] = 0;
-                if(el.privateData2 && el.privateData2.resources !== undefined)
-                    monitor[resource].used += resources[resource] - dropdown.valuePrevious[resource];
-                else
-                    monitor[resource].used -= dropdown.valuePrevious[resource];                    
-                if(monitor[resource].used < 0)
-                    monitor[resource].used = 0;
-                dropdown.valuePrevious[resource] = resources[resource];
-            }
-        } */
         checkResources();
     }
 
@@ -649,7 +643,7 @@ function dropdownChanged (dropdown)
             break;
 
         case 'N_MACROS':
-            const macros2 = document.getElementById('MACROS_ENABLE');            
+            const macros2 = document.getElementById('MACROS_ENABLE');
             Array.from(dropdown.children).forEach(child => {
                 if(macros2.selectedIndex == 1 || macros2.selectedIndex == 3) {
                     if(!dropdown.disabled && child.privateData2 === undefined)
@@ -845,7 +839,7 @@ function checkboxChanged (btn)
                     sdcard.selectedIndex = 1;
             }
             break;
-            
+
         case 'ENABLE_JERK_ACCELERATION':
             const atps = document.getElementById('ACCELERATION_TICKS_PER_SECOND');
             if(atps) {
@@ -853,7 +847,7 @@ function checkboxChanged (btn)
                 atps.selectedIndex = 0;
             }
             break;
-            
+
         default:
             if(btn.checked && btn.privateData2 && btn.privateData2.resources) {
                 if(btn.privateData2.resources['modbus_rtu'] == 1) {
@@ -1059,7 +1053,7 @@ function driverSelected (driver, result, board_idx = 0)
                         if(plugin.URL)
                             addInfoButton(div, plugin.URL);
                     }
-                   
+
                     if(plugin.suboptions) {
                         for(let opt of plugin.suboptions)
                             addCheckbox(div, opt.symbol.name, opt.name, false, 10).disabled = true;
@@ -1070,7 +1064,7 @@ function driverSelected (driver, result, board_idx = 0)
         }
     }
 
-    for(let signal of data.signals) {        
+    for(let signal of data.signals) {
         if(signal.symbol.type == 'bool') {
             const div = data.tabs[signal.tab_id ? signal.tab_id : 5].div;
             var cb = addCheckbox(div, signal.symbol.name, signal.name, false);
@@ -1084,9 +1078,6 @@ function driverSelected (driver, result, board_idx = 0)
 
         if((plugin.resources && plugin.resources['modbus_rtu']) === 1 ? !modbus : false)
             continue;
-
-    //    if(plugin.tab_id == 4 && driver.name == 'ESP32' && !plugin.idf)
-    //        continue;
 
         const div = data.tabs[plugin.tab_id ? plugin.tab_id : 0].div;
 
@@ -1160,6 +1151,8 @@ function vendorSelected (vendor, result)
 	while (machines.hasChildNodes())
         machines.removeChild(machines.lastChild);
 
+    addDropdownOption(machines, '--- select machine ---'); // Add default option
+
     for(let machine of result.machines) {
 	    var optn = machine.name;
         var el = document.createElement('option');
@@ -1168,14 +1161,93 @@ function vendorSelected (vendor, result)
         el.privateData = machine;
         machines.appendChild(el);
     }
-
-	machineSelected(machines[0].privateData);
 }
 
-function machineSelected (machine)
+// --- MODIFICATION START: The machineSelected function is now async and handles auto-selection ---
+async function machineSelected (machine)
 {
 	urlbtnSet('machine_url', machine.URL);
+
+    // Handle "grblHAL" default machine selection
+    if (!machine || machine.id === GRBLHAL_DEFAULT_ID) {
+        // Reset driver and board dropdowns to initial state
+        drivers.selectedIndex = 0; // "--- select driver ---"
+        drivers.dispatchEvent(new Event('change')); // Trigger change to clear tabs etc.
+
+        // Ensure boards dropdown is also reset and info buttons disabled
+        while (boards.hasChildNodes())
+            boards.removeChild(boards.lastChild);
+        addDropdownOption(boards, '--- select board ---');
+        urlbtnSet('driver_url', '');
+        urlbtnSet('board_url', '');
+        urlbtnSet('board_map_url', '');
+        generateEnable(false);
+        return;
+    }
+
+    // If the selected machine doesn't have driver/board info, do nothing.
+    if (!machine.driver || !machine.board) {
+        return;
+    }
+
+    // 1. Find and select the correct driver.
+    let driverFound = false;
+    for (let i = 0; i < drivers.options.length; i++) {
+        const driverOpt = drivers.options[i];
+        if (driverOpt.privateData && driverOpt.privateData.folder === machine.driver) {
+            drivers.selectedIndex = i;
+            driverFound = true;
+            break;
+        }
+    }
+
+    if (!driverFound) {
+        console.error("Could not find a matching driver for:", machine.driver);
+        return;
+    }
+
+    // 2. Manually trigger the driver loading process and wait for it to complete.
+    const selectedDriver = drivers.options[drivers.selectedIndex].privateData;
+    const url = selectedDriver.driverURL.match('github.com')
+        ? selectedDriver.driverURL.replace('github.com', 'raw.githubusercontent.com') + '/master/driver.json'
+        : selectedDriver.driverURL + '/driver.json';
+
+    try {
+        const response = await fetch(url + '?t=' + Math.round(new Date().getTime() / 1000));
+        if (response.status !== 200) {
+            throw new Error('Failed to fetch driver.json');
+        }
+        const result = await response.json();
+
+        // This function populates the UI and the boards dropdown.
+        driverSelected(selectedDriver, result);
+
+        // 3. Now that the boards are loaded, find and select the correct board.
+        let boardFound = false;
+        for (let i = 0; i < boards.options.length; i++) {
+            const boardOpt = boards.options[i];
+            if (boardOpt.privateData && boardOpt.privateData.symbol === machine.board) {
+                boards.selectedIndex = i;
+                boardFound = true;
+                break;
+            }
+        }
+
+        if (!boardFound) {
+            console.error("Could not find a matching board for symbol:", machine.board);
+            return;
+        }
+
+        // 4. Trigger the board selection logic to apply its specific settings.
+        boards.dispatchEvent(new Event('change'));
+
+    } catch (error) {
+        console.error("Error loading driver data:", error);
+        alert("Failed to load the data for the selected driver.");
+    }
 }
+// --- MODIFICATION END ---
+
 
 function eeprom_size2index (size)
 {
@@ -1204,7 +1276,7 @@ function boardSelected (board)
             monitor[resource].board = caps[resource];
         else
             monitor[resource].board = typeof board.caps[resource] == 'number' ? board.caps[resource] : monitor[resource].driver;
-		
+
 		if(resource == 'control_inputs')
 			monitor[resource].used = 0;
     }
@@ -1364,7 +1436,7 @@ function boardSelected (board)
 
                 case 'MOTOR_WARNING_ENABLE':
                     if((feature.disabled = !caps.motor_warning))
-                        feature.checked = false;                        
+                        feature.checked = false;
                     break;
 
                 case 'MOTOR_FAULT_ENABLE':
@@ -1382,8 +1454,8 @@ function boardSelected (board)
                                 addDropdownOption(feature, feature.privateData.options[i].name, makeSymbol(feature.privateData.options[i].symbol));
                         }
                     break;
-                
-                
+
+
                 case 'RGB_LED_ENABLE':
                     if((feature.disabled = !hasResources(caps, feature.privateData.resources)))
                         feature.selectedIndex = 0;
@@ -1519,7 +1591,7 @@ function boardSelected (board)
                         feature.checked = false;
                     checkboxChanged(feature);
                     break;
-                    
+
                 default:
                     if(tab.tab_id == 4) {
                         if(feature.privateData2) {
@@ -1538,7 +1610,7 @@ drivers.onchange = function()
 {
     var driver = this.options[this.selectedIndex].privateData;
 
-    if(driver == undefined) {
+    if(driver == undefined || driver.id === GRBLHAL_DEFAULT_ID) { // MODIFIED: Check for grblHAL default driver
 
         for(const tab of data.tabs) {
             if(tab.div) {
@@ -1585,21 +1657,24 @@ vendors.onchange = function()
 
 	console.log(vendor);
 
-    if(vendor == undefined) {
-
+    // This block correctly handles the special "grblHAL" default case
+    if(vendor == undefined || vendor.id === GRBLHAL_DEFAULT_ID) {
         while (machines.hasChildNodes())
             machines.removeChild(machines.lastChild);
 
         addDropdownOption(machines, '--- select machine ---');
+        addDropdownOption(machines, 'grblHAL', { id: GRBLHAL_DEFAULT_ID });
+        machines.selectedIndex = 1; // Select "grblHAL" machine
+        machines.dispatchEvent(new Event('change'));
 
         urlbtnSet('vendor_url', '');
         urlbtnSet('machine_url', '');
 
-	} else {
+	} else { // This block handles specific vendors like Sienci
 
         urlbtnSet('vendor_url', vendor.vendorURL);
 
-        var url = vendor.profilesURL.match('github.com') ? vendor.profilesURL.replace('github.com', 'raw.githubusercontent.com') + 'refs/heads/main' : vendor.profilesURL;
+        var url = vendor.profilesURL.match('github.com') ? vendor.profilesURL.replace('github.com', 'raw.githubusercontent.com') + '/master' : vendor.profilesURL;
 
         fetch(url + '/profiles.json' + '?t=' + Math.round(new Date().getTime() / 1000))
         .then(successResponse => {
@@ -1609,7 +1684,7 @@ vendors.onchange = function()
                 return null;
             }
         )
-        .then(result => vendorSelected(vendor, result));
+        .then(result => vendorSelected(vendor, result)); // Calls the now-corrected vendorSelected function
     }
 }
 
@@ -1653,7 +1728,7 @@ function createSelection ()
         const bsymbols = Object.keys(board.pio_env)
         bsymbols.forEach(key => { pio_env.push({ 'name': `${board.pio_env[key]}`, 'URL': '' }) });
     }
-    
+
     if(board.cmake_args) {
         const bsymbols = Object.keys(board.cmake_args)
         bsymbols.forEach(key => { cmake_args.push(`${board.cmake_args[key]}` === '' ? `${key}` : `${key}` + '=' + `${board.cmake_args[key]}`) });
@@ -1667,7 +1742,6 @@ function createSelection ()
 
             switch(el.type) {
 
-    //            case 'input':
                 case 'checkbox':
                     if(!el.disabled) {
                         if(el.checked === true) {
@@ -1698,9 +1772,9 @@ function createSelection ()
 									}
                                 }
                             }
-                        } else if(el.id == 'ESTOP_ENABLE' || el.id == 'PROBE_ENABLE') // todo: add privateData2 from drivers.json property instead of el.id == 'ESTOP_ENABLE'
+                        } else if(el.id == 'ESTOP_ENABLE' || el.id == 'PROBE_ENABLE')
                             symbols.push(el.id + '=0');
-                    } else if(el.id == 'PROBE_ENABLE') // todo: add privateData2 from drivers.json property instead of el.id == 'ESTOP_ENABLE'
+                    } else if(el.id == 'PROBE_ENABLE')
                         symbols.push(el.id + '=0');
                     break;
 
@@ -1719,7 +1793,7 @@ function createSelection ()
                                         else
                                             symbols.push(opt.privateData2.symbols[i].name);
                                         if(opt.privateData2.symbols[i].name == 'ADD_MY_PLUGIN')
-                                            my_plugin.push(el.privateData.btn.url);                                       
+                                            my_plugin.push(el.privateData.btn.url);
                                     }
                                 } else if(opt.privateData2.symbol)
                                     symbols.push(opt.privateData2.symbol.name + '=' + opt.privateData2.symbol.value);
@@ -1759,9 +1833,9 @@ function createSelection ()
 
                             case 'TRINAMIC_ENABLE':
                                 symbols.push(opt.privateData);
-                                if(el.privateData2.tmc_options[el.selectedIndex].trinamic_r_sense !== undefined)  
+                                if(el.privateData2.tmc_options[el.selectedIndex].trinamic_r_sense !== undefined)
                                     symbols.push('TRINAMIC_R_SENSE=' + el.privateData2.tmc_options[el.selectedIndex].trinamic_r_sense);
-                                else if(el.privateData2.tmc_options[el.selectedIndex].trinamic_r_ref !== undefined)  
+                                else if(el.privateData2.tmc_options[el.selectedIndex].trinamic_r_ref !== undefined)
                                     symbols.push('TRINAMIC_R_REF=' + el.privateData2.tmc_options[el.selectedIndex].trinamic_r_ref);
                                 break;
 
@@ -1775,19 +1849,19 @@ function createSelection ()
                                     pio_env.push({ 'name': 'wifi_networking', 'URL': '' });
                                 }
                                 break;
-                                
+
                             case 'ETHERNET_ENABLE':
                                 if(el.selectedIndex > 0) {
                                     symbols.push(opt.privateData);
                                     pio_env.push({ 'name': 'eth_networking', 'URL': '' });
                                 }
                                 break;
-                                
+
                                 case 'N_EVENTS':
                                     symbols.push('EVENTOUT_ENABLE=1');
                                     symbols.push(opt.privateData);
                                     break;
-                                
+
                             case '_WIZCHIP_':
                                 if(el.selectedIndex > 0) {
                                     symbols.push(opt.privateData);
@@ -1875,7 +1949,7 @@ function saveSelection ()
 
     if(build.pio_env)
         delete build.pio_env;
- 
+
     if(build.cmake_args)
         delete build.cmake_args;
 
@@ -2060,7 +2134,10 @@ console.log('----------');
     generateEnable(false);
 
     let xhr = new XMLHttpRequest();
-    xhr.open('POST', window.location.origin + '/builder' + build.docker_instance);
+    // --- MODIFICATION START ---
+    // Changed window.location.origin to remote_server_base_url to point the POST request to your server
+    xhr.open('POST', remote_server_base_url + '/builder' + build.docker_instance);
+    // --- MODIFICATION END ---
     xhr.responseType = 'blob';
     xhr.setRequestHeader('Accept', 'application/octet-stream');
     xhr.setRequestHeader('Content-Type', 'application/json');
@@ -2090,7 +2167,7 @@ console.log('----------');
 }
 
 function urlbtnSet (id, url)
-{  
+{
     const urlbtn = document.getElementById(id);
     urlbtn.URL = url;
     urlbtn.disabled = url === '';
@@ -2131,10 +2208,9 @@ function getPlugin (symbol)
 
 function hasPlugin (caps, name)
 {
-    // TODO: fix when driver.json files are updated for hc05 available
     var drivers = document.getElementById('drivers');
-    var driver = drivers[drivers.selectedIndex].privateData;
-   
+    var driver = drivers.options[drivers.selectedIndex].privateData;
+
     return (name == 'hc05' && driver.name != 'ESP32' && caps.plugins.find(plugin => plugin.id == 'bluetooth') != undefined) || caps.plugins.find(plugin => plugin.id == name) != undefined;
 }
 
@@ -2142,9 +2218,14 @@ function getDriverProperties ()
 {
     const drivers = document.getElementById('drivers');
     var properties = drivers.options[drivers.selectedIndex].privateData;
-     
+
+    // Check if properties is undefined or the special grblHAL default
+    if (!properties || properties.id === GRBLHAL_DEFAULT_ID) {
+        return { caps: {}, symbols: {}, symbols_networking: {} }; // Return empty/default caps for grblHAL default
+    }
+
     default_caps.forEach(cap => {
-        
+
         if(!properties.caps.hasOwnProperty(cap.key)) switch(cap.key) {
 
             case 'control_inputs':
@@ -2158,26 +2239,20 @@ function getDriverProperties ()
             case 'hc05':
                 properties.caps[cap.key] = hasPlugin(properties.caps, cap.key) ? 1 : 0;
                 break;
-                
+
             case 'i2c_ports':
                 properties.caps[cap.key] = (properties.caps.hasOwnProperty('i2c_strobe') && properties.caps.i2c_strobe) ? 1 : 0;
                 break;
 
-/*
-            case 'i2c':
-                properties.caps[cap.key] = properties.caps.plugins.find(plugin => plugin.id == 'eeprom') != undefined ||
-                                            (properties.caps.hasOwnProperty('i2c_strobe') && properties.caps['i2c_strobe']) ? 1 : 0;
-                break;        
-*/
             case 'modbus':
                 properties.caps[cap.key] = hasPlugin(properties.caps, 'spindle') ? 1 : 0;
-                break;        
+                break;
 
             case 'eeprom':
                 properties.caps['i2c'] = properties.caps.plugins.find(plugin => plugin.id == cap.key) != undefined ? 1 : 0;
             case 'sdcard':
                 properties.caps[cap.key] = properties.caps.plugins.find(plugin => plugin.id == cap.key) != undefined ? 1 : 0;
-                break;        
+                break;
 
             default:
                 properties.caps[cap.key] = 0;
@@ -2197,14 +2272,28 @@ function getBoardCaps (board)
     const dcaps = getDriverProperties().caps;
     const informal = dcaps.hasOwnProperty('informal');
 
-    /*
-    if(!informal) {
-        Object.keys(dcaps).forEach(key => {
-            if(key != 'informal')
-                caps[key] = dcaps[key];
+    // If board is undefined (e.g., "--- select board ---" is chosen)
+    if (!board || board.id === GRBLHAL_DEFAULT_ID) {
+        // Return minimal default capabilities, mostly derived from driver or global defaults
+        const default_derived_caps = {};
+        default_caps.filter(c => c.derived).forEach(c => {
+            if (dcaps.hasOwnProperty(c.key)) {
+                default_derived_caps[c.key] = dcaps[c.key];
+            } else {
+                // Set reasonable defaults if not available from driver
+                switch (c.key) {
+                    case 'axes': default_derived_caps[c.key] = 3; break;
+                    case 'motors': default_derived_caps[c.key] = 3; break;
+                    case 'serial_ports': default_derived_caps[c.key] = 1; break;
+                    case 'control_inputs': default_derived_caps[c.key] = 3; break;
+                    case 'auto_square': default_derived_caps[c.key] = 0; break;
+                    default: default_derived_caps[c.key] = 0; break;
+                }
+            }
         });
+        return default_derived_caps;
     }
-    */
+
     Object.keys(board.caps).forEach(key => {
         caps[key] = board.caps[key];
     });
@@ -2234,20 +2323,16 @@ function getBoardCaps (board)
                 caps[cap.key] = (caps.hasOwnProperty('i2c_strobe') && caps.i2c_strobe) ? 1 : 0;
                 break;
 
-//                case 'fram':
-//                    caps[cap] = caps['eeprom'] > 0 ? 1 : 0;                
-//                    break;
-                
             case 'ganged_axes':
                 if(!caps.hasOwnProperty(cap.key))
                     caps[cap.key] = Math.max(caps['motors'] - 3, 0);
-                break;                    
+                break;
 
             case 'hc05':
                 var serial_ports = (caps.hasOwnProperty('serial_ports') ? caps.serial_ports : 0) -
                                     (caps.hasOwnProperty('usb_cdc') && caps.usb_cdc ? 0 : 1);
                 caps[cap.key] = dcaps[cap.key] && serial_ports >= 1 && caps.hasOwnProperty('digital_in') && caps.digital_in > 0 ? 1 : 0;
-                break;  
+                break;
 
             case 'modbus':
                 var serial_ports = (caps.hasOwnProperty('serial_ports') ? caps.serial_ports : 0) -
@@ -2257,7 +2342,7 @@ function getBoardCaps (board)
 
             case 'motors':
                 caps[cap.key] = caps['axes'];
-                break;          
+                break;
 
             case 'networking':
                 caps[cap.key] = caps.ethernet || caps.wifi || caps.wiznet ? 1 : 0;
@@ -2268,13 +2353,13 @@ function getBoardCaps (board)
                 break;
 
             case 'spindle_dir':
-                caps[cap.key] = 1; //caps.pwm_spindle_aux !== 0 ? 1 : 0;
+                caps[cap.key] = 1;
                 break;
 
             case 'webui':
                 if(!caps.hasOwnProperty(cap.key))
                     caps[cap.key] = caps.networking;
-                break;                
+                break;
         }
     });
 
@@ -2282,7 +2367,7 @@ function getBoardCaps (board)
         if(!caps.hasOwnProperty(cap.key))
             caps[cap.key] = 0;
     });
-    
+
     build_options.forEach(build_option => {
         if(dcaps.hasOwnProperty(build_option) && !caps.hasOwnProperty(build_option))
             caps[build_option] = dcaps[build_option];
@@ -2299,7 +2384,7 @@ function checkResources ()
 
     for(var resource in monitor) {
 
-		var board = monitor[resource].board, used = monitor[resource].used; 
+		var board = monitor[resource].board, used = monitor[resource].used;
 
 		if(resource == 'digital_in') {
 			board += monitor['control_inputs'].board - monitor['control_inputs'].used;
@@ -2317,8 +2402,6 @@ function checkResources ()
     div.style.display = mismatch ? 'block' : 'none';
     generateEnable(!mismatch);
 
-//    console.log(monitor);
-
     return !mismatch;
 }
 
@@ -2331,7 +2414,7 @@ function hasResources (board, feature)
 
     const required = Object.keys(feature);
     var i = required.length;
-    
+
     while(i && ok) {
         var key = required[--i];
         var count = feature[key];
@@ -2398,9 +2481,7 @@ function lineUp (div)
         if(el.tagName == 'LABEL') {
             const elp = document.getElementById(el.htmlFor);
             if(elp.type == 'select-one') {
-        //console.log('dr', elp.style.width, el.style.marginLeft, el.offsetWidth, el.clientWidth, elp);
             el.style.marginLeft = parseInt(el.style.marginLeft.replace('px', '')) + parseInt(elp.style.width.replace('px', '')) + 80 - el.offsetWidth + 'px';
-        //console.log('ds', el.style.marginLeft, el.offsetWidth);
             }
         }
 
@@ -2410,8 +2491,6 @@ function lineUp (div)
             const ps = el.previousElementSibling;
             if(ps.tagName == 'LABEL') {
                 var elp = document.getElementById(ps.htmlFor);
- //              console.log(elp.type, el.previousElementSibling);
- //               console.log(elp.offsetWidth, elp.offsetLeft, ps.offsetWidth);
                 el.style.marginLeft = (230.0 - (elp.type == 'checkbox' ? ps.offsetWidth + 16.5 : elp.offsetWidth)) + 'px';
             }
             el = el.nextElementSibling;
@@ -2419,5 +2498,17 @@ function lineUp (div)
     }
 }
 
-if(drivers.selectedIndex > 0)
-    drivers.dispatchEvent(new Event('change'));
+// --- MODIFICATION START: Initial page load defaults to "grblHAL" vendor/machine ---
+// Find and select "grblHAL" as the default vendor on initial load
+let grblhalVendorIndex = -1;
+for (let i = 0; i < vendors.options.length; i++) {
+    if (vendors.options[i].privateData && vendors.options[i].privateData.id === GRBLHAL_DEFAULT_ID) {
+        grblhalVendorIndex = i;
+        break;
+    }
+}
+if (grblhalVendorIndex !== -1) {
+    vendors.selectedIndex = grblhalVendorIndex;
+    vendors.dispatchEvent(new Event('change')); // Trigger the vendor change event
+}
+// --- MODIFICATION END ---
