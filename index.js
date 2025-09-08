@@ -1165,37 +1165,125 @@ function vendorSelected (vendor, result)
 }
 
 // --- MODIFICATION START: The machineSelected function is now async and handles auto-selection ---
+
+// ADD THIS NEW HELPER FUNCTION
+function applyWebBuilderOverrides(profile) {
+    if (!profile) return;
+
+    // Apply setting defaults first
+    setting_defaults = [];
+    if (profile.setting_defaults && Array.isArray(profile.setting_defaults)) {
+        profile.setting_defaults.forEach(value => { setting_defaults.push(value) });
+        console.log("Applied setting defaults from profile.");
+    }
+
+    const overrides = profile.webbuilder_overrides;
+    if (!overrides) return;
+
+    console.log("Applying web builder overrides...", overrides);
+
+    // This timeout ensures the UI elements created by driverSelected have rendered
+    // before we try to modify their values.
+    setTimeout(() => {
+        for (const key in overrides) {
+            const value = overrides[key];
+            const element = document.getElementById(key);
+
+            if (!element) {
+                console.warn(`Override element with ID '${key}' not found.`);
+                continue;
+            }
+
+            if (element.disabled) {
+                console.warn(`Skipping override for disabled element: '${key}'`);
+                continue;
+            }
+
+            if (element.type === 'checkbox') {
+                if (element.checked !== !!value) {
+                    element.checked = !!value;
+                    element.dispatchEvent(new Event('click')); // Use click to ensure checkboxChanged is called
+                }
+            } else if (element.type === 'select-one') {
+                let optionFound = false;
+                for (let i = 0; i < element.options.length; i++) {
+                    const option = element.options[i];
+                    const privateDataMatch = `${key}=${value}`;
+
+                    // Check against option's value OR its privateData symbol
+                    // For dropdowns with simple values (e.g., N_AXIS), the option value is the number.
+                    // For others, it's the text content or a symbol. We need a flexible match.
+                    if (option.value === value.toString() ||
+                       (option.privateData && option.privateData === privateDataMatch) ||
+                       (option.privateData && option.privateData === `${key}=${option.value}` && value.toString() === option.value)) {
+
+                        if (element.selectedIndex !== i) {
+                            element.selectedIndex = i;
+                            element.dispatchEvent(new Event('change'));
+                        }
+                        optionFound = true;
+                        break;
+                    }
+                }
+                if (!optionFound) {
+                    console.warn(`Could not find option for override: ${key}=${value}`);
+                }
+            }
+        }
+    }, 100); // 100ms delay is safer to ensure all UI is ready
+}
+
+// MODIFY the machineSelected function
 async function machineSelected (machine)
 {
 	urlbtnSet('machine_url', machine.URL);
 
-    // Handle "grblHAL" default machine selection
+    // If a default or invalid machine is selected, reset the driver/board state
     if (!machine || machine.id === GRBLHAL_DEFAULT_ID) {
-        // Reset driver and board dropdowns to initial state
-        drivers.selectedIndex = 0; // "--- select driver ---"
-        drivers.dispatchEvent(new Event('change')); // Trigger change to clear tabs etc.
-
-        // Ensure boards dropdown is also reset and info buttons disabled
-        while (boards.hasChildNodes())
-            boards.removeChild(boards.lastChild);
-        addDropdownOption(boards, '--- select board ---');
-        urlbtnSet('driver_url', '');
-        urlbtnSet('board_url', '');
-        urlbtnSet('board_map_url', '');
-        generateEnable(false);
+        drivers.selectedIndex = 0;
+        drivers.dispatchEvent(new Event('change')); // This will clear the UI
         return;
     }
 
-    // If the selected machine doesn't have driver/board info, do nothing.
-    if (!machine.driver || !machine.board) {
+    // If the selected machine doesn't have a profile URL, we can't proceed
+    if (!machine.profileURL) {
+        console.error("Machine is missing the 'profileURL' property.");
         return;
     }
 
-    // 1. Find and select the correct driver.
+    // --- New Logic Start ---
+    let profileData = null;
+    try {
+        // Construct the correct URL for the raw machine profile
+        const profileUrl = machine.profileURL.match('github.com')
+            ? machine.profileURL.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/')
+            : machine.profileURL;
+
+        const profileResponse = await fetch(profileUrl + '?t=' + Math.round(new Date().getTime() / 1000));
+        if (!profileResponse.ok) throw new Error(`Failed to fetch profile: ${profileResponse.statusText}`);
+        profileData = await profileResponse.json();
+
+    } catch (error) {
+        console.error("Could not load machine profile JSON:", error);
+        alert("Failed to load the selected machine profile. Please check the URL and file content.");
+        return; // Stop execution if the profile can't be loaded
+    }
+
+    // Extract driver and board info from the loaded profile
+    const driverName = profileData.driver ? profileData.driver.name : null;
+    const boardSymbol = profileData.driver ? profileData.driver.board : null;
+
+    if (!driverName || !boardSymbol) {
+        console.error("Machine profile is missing 'driver.name' or 'driver.board' information.");
+        return;
+    }
+    // --- New Logic End ---
+
+    // Find and select the driver based on the name from the profile
     let driverFound = false;
     for (let i = 0; i < drivers.options.length; i++) {
         const driverOpt = drivers.options[i];
-        if (driverOpt.privateData && driverOpt.privateData.folder === machine.driver) {
+        if (driverOpt.privateData && driverOpt.privateData.name === driverName) {
             drivers.selectedIndex = i;
             driverFound = true;
             break;
@@ -1203,31 +1291,29 @@ async function machineSelected (machine)
     }
 
     if (!driverFound) {
-        console.error("Could not find a matching driver for:", machine.driver);
+        console.error("Could not find a matching driver for name:", driverName);
         return;
     }
 
-    // 2. Manually trigger the driver loading process and wait for it to complete.
+    // Now, manually load the selected driver's configuration
     const selectedDriver = drivers.options[drivers.selectedIndex].privateData;
-    const url = selectedDriver.driverURL.match('github.com')
+    const driverUrl = selectedDriver.driverURL.match('github.com')
         ? selectedDriver.driverURL.replace('github.com', 'raw.githubusercontent.com') + '/master/driver.json'
         : selectedDriver.driverURL + '/driver.json';
 
     try {
-        const response = await fetch(url + '?t=' + Math.round(new Date().getTime() / 1000));
-        if (response.status !== 200) {
-            throw new Error('Failed to fetch driver.json');
-        }
+        const response = await fetch(driverUrl + '?t=' + Math.round(new Date().getTime() / 1000));
+        if (response.status !== 200) throw new Error('Failed to fetch driver.json');
         const result = await response.json();
 
-        // This function populates the UI and the boards dropdown.
+        // Populate UI tabs and the boards dropdown
         driverSelected(selectedDriver, result);
 
-        // 3. Now that the boards are loaded, find and select the correct board.
+        // Find and select the board based on the symbol from the profile
         let boardFound = false;
         for (let i = 0; i < boards.options.length; i++) {
             const boardOpt = boards.options[i];
-            if (boardOpt.privateData && boardOpt.privateData.symbol === machine.board) {
+            if (boardOpt.privateData && boardOpt.privateData.symbol === boardSymbol) {
                 boards.selectedIndex = i;
                 boardFound = true;
                 break;
@@ -1235,16 +1321,19 @@ async function machineSelected (machine)
         }
 
         if (!boardFound) {
-            console.error("Could not find a matching board for symbol:", machine.board);
+            console.error("Could not find a matching board for symbol:", boardSymbol);
             return;
         }
 
-        // 4. Trigger the board selection logic to apply its specific settings.
+        // Trigger board selection to apply board-specific capabilities
         boards.dispatchEvent(new Event('change'));
 
+        // Finally, apply all the UI overrides from the machine profile
+        applyWebBuilderOverrides(profileData);
+
     } catch (error) {
-        console.error("Error loading driver data:", error);
-        alert("Failed to load the data for the selected driver.");
+        console.error("Error during driver data loading or UI configuration:", error);
+        alert("An error occurred while configuring the builder for the selected machine.");
     }
 }
 // --- MODIFICATION END ---
