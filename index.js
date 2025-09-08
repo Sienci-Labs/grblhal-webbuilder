@@ -61,7 +61,7 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
-main.appendChild(btn);
+vendors.parentElement.appendChild(btn);
 
 var machines = addDropdown(main, 'machines', 'Machine: ');
 addDropdownOption(machines, '--- select machine ---');
@@ -74,7 +74,7 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
-main.appendChild(btn);
+machines.parentElement.appendChild(btn);
 
 var variants = addDropdown(main, 'variants', 'Variant: ');
 addDropdownOption(variants, '--- select variant ---');
@@ -86,7 +86,7 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 });
-main.appendChild(btn);
+variants.parentElement.appendChild(btn);
 variants.parentElement.style.display = 'none';
 
 
@@ -105,11 +105,12 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
-main.appendChild(btn);
+drivers.parentElement.appendChild(btn);
 
 var boards = addDropdown(main, 'boards', 'Boards: ');
 addDropdownOption(boards, '--- select board ---');
-addBoardInfoButton(main);
+const boardsLabel = boards.parentElement;
+addBoardInfoButton(boardsLabel);
 btn = document.createElement('button');
 btn.id = 'board_url';
 btn.disabled = true;
@@ -118,7 +119,7 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
-main.appendChild(btn);
+boardsLabel.appendChild(btn);
 
 btn = document.createElement('button');
 btn.id = 'board_map_url';
@@ -128,7 +129,7 @@ btn.style.marginLeft = '5px';
 btn.addEventListener('click', function() {
     window.open(this.URL, '_blank')
 })
-main.appendChild(btn);
+boardsLabel.appendChild(btn);
 
 addTextField(main, 'notes', 'Notes: ', 480, 67);
 
@@ -270,7 +271,7 @@ function addInfoButton (div, url)
     return btn;
 }
 
-function addBoardInfoButton (div)
+function addBoardInfoButton (container)
 {
     btn = document.createElement('button');
     btn.id = 'info';
@@ -337,7 +338,7 @@ function addBoardInfoButton (div)
         div.appendChild(tbl);
     })
 
-    div.appendChild(btn);
+    container.appendChild(btn);
 
     return btn;
 }
@@ -1263,10 +1264,12 @@ function variantSelected(variantData) {
     if (variantData.setting_defaults) {
         const settingsMap = new Map();
         // Add base settings to the map
-        mergedProfile.setting_defaults.forEach(setting => {
-            const [key] = setting.split('=');
-            settingsMap.set(key, setting);
-        });
+        if (mergedProfile.setting_defaults) {
+            mergedProfile.setting_defaults.forEach(setting => {
+                const [key] = setting.split('=');
+                settingsMap.set(key, setting);
+            });
+        }
         // Add/overwrite with variant settings
         variantData.setting_defaults.forEach(setting => {
             const [key] = setting.split('=');
@@ -1285,17 +1288,28 @@ async function machineSelected (machine)
 {
     urlbtnSet('machine_url', machine.URL);
     const variantsDropdown = document.getElementById('variants');
+    const variantsLabel = variantsDropdown.parentElement;
+
     // Reset and hide variants dropdown
+    variantsDropdown.selectedIndex = 0;
     while (variantsDropdown.options.length > 1) {
         variantsDropdown.remove(1);
     }
-    variantsDropdown.parentElement.style.display = 'none';
+    variantsLabel.style.display = 'none';
     urlbtnSet('variant_url', '');
 
     if (!machine || machine.id === GRBLHAL_DEFAULT_ID) {
         drivers.selectedIndex = 0;
         drivers.dispatchEvent(new Event('change'));
         currentMachineProfile = null;
+
+        // Special handling for grblHAL variant
+        variantsLabel.style.display = ''; // Make the row visible
+        addDropdownOption(variantsDropdown, 'None');
+        variantsDropdown.selectedIndex = 1; // Select "None"
+        variantsDropdown.disabled = true;
+        document.getElementById('variant_url').disabled = true;
+
         return;
     }
 
@@ -1380,7 +1394,9 @@ async function machineSelected (machine)
 
         // Then, populate the variants dropdown if they exist.
         if (profileData.variants && Array.isArray(profileData.variants) && profileData.variants.length > 0) {
-            variantsDropdown.parentElement.style.display = 'block';
+            variantsLabel.style.display = ''; // Show the row
+            variantsDropdown.disabled = false;
+            document.getElementById('variant_url').disabled = false;
             profileData.variants.forEach(variant => {
                 addDropdownOption(variantsDropdown, variant.name, variant);
             });
