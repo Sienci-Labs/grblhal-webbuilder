@@ -26,7 +26,8 @@ const remote_server_base_url = 'https://svn.io-engineering.com:8443';
 const GRBLHAL_DEFAULT_ID = 'grblhal_default'; // New constant for default option ID
 // --- MODIFICATION END ---
 
-const drivers_url = window.location.origin + '/drivers/drivers.json';
+const drivers_url = new URL('drivers/drivers.json', window.location.href).href;
+
 const is_dev = typeof getParam('dev') !== 'undefined';
 const dropdown_width = 215;
 const uri_driver = getParam('driver');
